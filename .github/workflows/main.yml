@@ -12,29 +12,11 @@ permissions:
   pull-requests: read
 
 jobs:
-  ci-checks:
+  ci-and-deploy:
     uses: pinokew/shared-workflows/.github/workflows/shared-ci-cd.yml@main
     with:
-      environment_name: 'dummy'  # не використовується в ci-checks
-      deploy: false               # disable deploy для ci-checks job
-      use_ansible: false
-      build_and_push_docker: false
-    secrets:
-      TS_OAUTH_CLIENT_ID: ''
-      TS_OAUTH_SECRET: ''
-      SERVER_HOST: ''
-      SERVER_USER: ''
-      SERVER_SSH_KEY: ''
-      SSH_HOST_KEY_PUB: ''
-      DEPLOY_PROJECT_DIR: ''
-
-  deploy:
-    needs: ci-checks
-    if: github.event_name == 'push' && github.ref == 'refs/heads/dev'
-    uses: pinokew/shared-workflows/.github/workflows/shared-ci-cd.yml@main
-    with:
-      environment_name: 'development'
-      deploy: true
+      environment_name: ${{ github.ref == 'refs/heads/dev' && 'development' || 'production' }}
+      deploy: ${{ github.event_name == 'push' && github.ref == 'refs/heads/dev' }}
       use_ansible: false
       build_and_push_docker: false
     secrets:
@@ -44,5 +26,4 @@ jobs:
       SERVER_USER: ${{ secrets.SERVER_USER }}
       SERVER_SSH_KEY: ${{ secrets.SERVER_SSH_KEY }}
       SSH_HOST_KEY_PUB: ${{ secrets.SSH_HOST_KEY_PUB }}
-      DEPLOY_PROJECT_DIR: ${{ secrets.DEPLOY_PROJECT_DIR }}
 
