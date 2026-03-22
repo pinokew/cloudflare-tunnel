@@ -2,7 +2,7 @@ name: App Pipeline
 
 on:
   push:
-    branches: [ main ]
+    branches: [ main, dev ]
   pull_request:
     branches: [ main ]
 
@@ -12,12 +12,11 @@ permissions:
   pull-requests: read
 
 jobs:
-  deploy-dev:
-    if: github.ref == 'refs/heads/dev'
+  ci-and-deploy:
     uses: pinokew/shared-workflows/.github/workflows/shared-ci-cd.yml@main
     with:
-      environment_name: 'development'
-      deploy: ${{ github.event_name == 'push' }}
+      environment_name: ${{ github.ref == 'refs/heads/dev' && 'development' || 'production' }}
+      deploy: ${{ github.event_name == 'push' && (github.ref == 'refs/heads/dev' || github.ref == 'refs/heads/main') }}
       use_ansible: false
       build_and_push_docker: false
     secrets: inherit
