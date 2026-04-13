@@ -28,10 +28,18 @@ nano .env
 docker compose up -d
 ```
 
-## Swarm deploy (dev)
+## Swarm deploy (dev/prod)
 
 1. Створити/оновити Docker Secret через Ansible SOPS-flow.
-2. Деплой:
+2. Вибрати secret name під середовище:
+
+```bash
+export CF_TUNNEL_TOKEN_SECRET_NAME=cf_tunnel_token_dev_v1
+# для prod приклад:
+# export CF_TUNNEL_TOKEN_SECRET_NAME=cf_tunnel_token_prod_v1
+```
+
+3. Деплой:
 
 ```bash
 docker compose -f docker-compose.yml -f docker-compose.swarm.yml config \
@@ -47,3 +55,4 @@ docker compose -f docker-compose.yml -f docker-compose.swarm.yml config \
 | `CLOUDFLARE_TUNNEL_VERSION` | `2026.2.0` | Версія образу `cloudflared` |
 | `PROXY_NET_NAME` | `proxy-net` | Ім'я зовнішньої Docker-мережі |
 | `COMPOSE_PROJECT_NAME` | `cf-tunnel` | Ім'я проєкту Compose |
+| `CF_TUNNEL_TOKEN_SECRET_NAME` | _обов'язково для swarm_ | Назва зовнішнього Docker Secret з токеном |
