@@ -3,12 +3,11 @@ services:
     container_name: !reset null
     restart: !reset null
     pull_policy: !reset null
-    env_file: !reset
-      - .env.public
+    env_file: !reset []
     environment: []
     command: tunnel --metrics 0.0.0.0:2000 run --token-file /run/secrets/cloudflare_tunnel_token
     secrets:
-      - source: cloudflare_tunnel_token
+      - source: cf_tunnel_token_dev_v1
         target: cloudflare_tunnel_token
     deploy:
       replicas: 1
@@ -22,5 +21,6 @@ services:
           - node.labels.app_zone == manager
 
 secrets:
-  cloudflare_tunnel_token:
+  cf_tunnel_token_dev_v1:
     external: true
+    name: cf_tunnel_token_dev_v1

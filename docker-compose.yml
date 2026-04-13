@@ -5,7 +5,7 @@ services:
   # створює DSpace-stack (або Traefik-stack у майбутньому).
   # ===================================================
   tunnel:
-    image: cloudflare/cloudflared:${CLOUDFLARE_TUNNEL_VERSION}
+    image: cloudflare/cloudflared:${CLOUDFLARE_TUNNEL_VERSION:-2026.2.0}
     container_name: cf-tunnel
     restart: always
     networks:

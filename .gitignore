@@ -1,11 +1,18 @@
 # cloudflare-tunnel — .gitignore
 
-# Секрети — ніколи не комітити
+# Plain env files (ніколи не комітити)
 .env
+.env.dev
+.env.prod
+.env.public
 
 # Editors
 .DS_Store
 *.swp
 *~
+
+# Local folders
 archive
-docs/DOCKER-SECRETS.md
+
+# Legacy docs path
+/docs/DOCKER-SECRETS.md
