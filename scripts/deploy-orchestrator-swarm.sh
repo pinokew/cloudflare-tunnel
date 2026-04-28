@@ -7,6 +7,7 @@ PROJECT_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
 MODE="${ORCHESTRATOR_MODE:-noop}"
 STACK_NAME="${STACK_NAME:-cf_tunnel}"
 ENV_FILE="${ORCHESTRATOR_ENV_FILE:-/tmp/env.decrypted}"
+ANSIBLE_SECRETS_REFRESH="${ANSIBLE_SECRETS_REFRESH:-auto}"
 
 log() {
   printf '[deploy-orchestrator] %s\n' "$*"
@@ -43,17 +44,39 @@ run_ansible_secrets_if_configured() {
   infra_repo_path="${INFRA_REPO_PATH:-}"
   environment="${ENVIRONMENT_NAME:-}"
 
+  case "${ANSIBLE_SECRETS_REFRESH}" in
+    auto|required|skip)
+      ;;
+    *)
+      log "ERROR: unsupported ANSIBLE_SECRETS_REFRESH=${ANSIBLE_SECRETS_REFRESH}. Supported: auto|required|skip"
+      exit 1
+      ;;
+  esac
+
+  if [[ "${ANSIBLE_SECRETS_REFRESH}" == "skip" ]]; then
+    log "ANSIBLE_SECRETS_REFRESH=skip; skip ansible secrets refresh"
+    return 0
+  fi
+
   if [[ -z "${infra_repo_path}" ]]; then
     log "INFRA_REPO_PATH is not set; skip ansible secrets refresh"
     return 0
   fi
 
   if [[ ! -d "${infra_repo_path}" ]]; then
+    if [[ "${ANSIBLE_SECRETS_REFRESH}" == "auto" ]]; then
+      log "WARNING: INFRA_REPO_PATH does not exist (${infra_repo_path}); skip ansible secrets refresh"
+      return 0
+    fi
     log "ERROR: INFRA_REPO_PATH does not exist: ${infra_repo_path}"
     exit 1
   fi
 
   if ! command -v ansible-playbook >/dev/null 2>&1; then
+    if [[ "${ANSIBLE_SECRETS_REFRESH}" == "auto" ]]; then
+      log "WARNING: ansible-playbook not found on host; skip ansible secrets refresh"
+      return 0
+    fi
     log "ERROR: ansible-playbook not found on host"
     exit 1
   fi
@@ -75,10 +98,18 @@ run_ansible_secrets_if_configured() {
   playbook_path="${infra_repo_path}/ansible/playbooks/swarm.yml"
 
   if [[ ! -f "${inventory_path}" ]]; then
+    if [[ "${ANSIBLE_SECRETS_REFRESH}" == "auto" ]]; then
+      log "WARNING: inventory file not found (${inventory_path}); skip ansible secrets refresh"
+      return 0
+    fi
     log "ERROR: inventory file not found: ${inventory_path}"
     exit 1
   fi
   if [[ ! -f "${playbook_path}" ]]; then
+    if [[ "${ANSIBLE_SECRETS_REFRESH}" == "auto" ]]; then
+      log "WARNING: playbook file not found (${playbook_path}); skip ansible secrets refresh"
+      return 0
+    fi
     log "ERROR: playbook file not found: ${playbook_path}"
     exit 1
   fi
@@ -89,6 +120,21 @@ run_ansible_secrets_if_configured() {
     -i "${inventory_path}" \
     "${playbook_path}" \
     --tags secrets
+}
+
+ensure_swarm_secret_exists() {
+  if ! command -v docker >/dev/null 2>&1; then
+    log "ERROR: docker CLI not found on host"
+    exit 1
+  fi
+
+  if ! docker secret inspect "${CF_TUNNEL_TOKEN_SECRET_NAME}" >/dev/null 2>&1; then
+    log "ERROR: required Docker Secret not found: ${CF_TUNNEL_TOKEN_SECRET_NAME}"
+    log "Create or refresh it before deploy, or run with ANSIBLE_SECRETS_REFRESH=required on a host with ansible-playbook."
+    exit 1
+  fi
+
+  log "Docker Secret exists: ${CF_TUNNEL_TOKEN_SECRET_NAME}"
 }
 
 ensure_external_networks() {
@@ -131,6 +177,7 @@ deploy_swarm() {
   fi
 
   run_ansible_secrets_if_configured
+  ensure_swarm_secret_exists
   ensure_external_networks
 
   log "Rendering Swarm manifest (stack=${STACK_NAME}, env_file=${ENV_FILE})"
