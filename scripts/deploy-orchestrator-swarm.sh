@@ -91,6 +91,11 @@ run_ansible_secrets_if_configured() {
     --tags secrets
 }
 
+ensure_external_networks() {
+  log "Ensuring required external Swarm networks"
+  ORCHESTRATOR_ENV_FILE="${ENV_FILE}" "${SCRIPT_DIR}/ensure-swarm-network.sh"
+}
+
 deploy_swarm() {
   local compose_file swarm_file raw_manifest deploy_manifest
 
@@ -112,7 +117,7 @@ deploy_swarm() {
   if [[ ! -f "${ENV_FILE}" ]]; then
     if [[ -f ".env" ]]; then
       ENV_FILE=".env"
-      log "Env file ${ORCHESTRATOR_ENV_FILE:-/tmp/env.decrypted} not found; fallback to .env"
+      log "WARNING: env.*.enc not decrypted or ORCHESTRATOR_ENV_FILE not provided. Fallback to local .env — dev only."
     else
       log "ERROR: env file not found (${ORCHESTRATOR_ENV_FILE:-/tmp/env.decrypted}) and .env missing"
       exit 1
@@ -126,6 +131,7 @@ deploy_swarm() {
   fi
 
   run_ansible_secrets_if_configured
+  ensure_external_networks
 
   log "Rendering Swarm manifest (stack=${STACK_NAME}, env_file=${ENV_FILE})"
   docker compose --env-file "${ENV_FILE}" \
